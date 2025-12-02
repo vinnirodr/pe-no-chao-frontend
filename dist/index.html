@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pé-no-Chão</title>
+    <link href="/index.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-900 text-white flex flex-col items-center p-6">
+    <div class="w-full max-w-2xl flex flex-col gap-6">
+
+        <!-- HOME -->
+        <section id="viewHome" class="flex flex-col gap-4">
+            <h1 class="text-3xl font-bold text-center">Pé-no-Chão 🧠</h1>
+            <p class="text-gray-300 text-center">Digite uma frase ou argumento para analisarmos lógica e fatos.</p>
+
+            <textarea id="inputText" class="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white"
+                placeholder="Digite seu texto aqui..." rows="5"></textarea>
+
+            <button onclick="analyzeText()" class="bg-blue-600 hover:bg-blue-700 p-3 rounded font-semibold">
+                Analisar
+            </button>
+        </section>
+
+        <!-- LOADING -->
+        <section id="viewLoading" class="hidden flex flex-col gap-4 items-center">
+            <div class="loader border-t-4 border-blue-400"></div>
+            <p id="loadingStep" class="text-gray-300">Carregando...</p>
+        </section>
+
+        <!-- RESULTADOS -->
+        <section id="viewResults" class="hidden flex flex-col gap-4">
+            <h2 class="text-2xl font-bold">Resultado da Análise</h2>
+
+            <div id="resultsContainer" class="flex flex-col gap-4"></div>
+
+            <button onclick="showView('viewHome')" class="bg-gray-700 hover:bg-gray-600 p-3 rounded">
+                Voltar
+            </button>
+        </section>
+    </div>
+
+<script>
+function showView(viewId) {
+    document.getElementById("viewHome").classList.add("hidden");
+    document.getElementById("viewLoading").classList.add("hidden");
+    document.getElementById("viewResults").classList.add("hidden");
+    document.getElementById(viewId).classList.remove("hidden");
+}
+
+let loadingTexts = [
+    "Carregando premissas...",
+    "Verificando consistência lógica...",
+    "Checando fatos em fontes...",
+    "Validando raciocínio...",
+    "Quase lá..."
+];
+
+function animateLoadingSteps() {
+    let i = 0;
+    const step = document.getElementById("loadingStep");
+
+    let interval = setInterval(() => {
+        if (i >= loadingTexts.length) {
+            clearInterval(interval);
+        } else {
+            step.innerText = loadingTexts[i];
+            i++;
+        }
+    }, 1200);
+}
+
+function transformApiResult(obj) {
+    return `
+        <div class="bg-gray-800 p-4 rounded border border-gray-600">
+            <h3 class="font-bold text-xl mb-2">Premissas</h3>
+            <p><strong>P1:</strong> ${obj.premissas.P1}</p>
+            <p><strong>P2:</strong> ${obj.premissas.P2}</p>
+        </div>
+        <div class="bg-gray-800 p-4 rounded border border-gray-600">
+            <h3 class="font-bold text-xl mb-2">Conclusão</h3>
+            <p>${obj.conclusao}</p>
+        </div>
+        <div class="bg-gray-800 p-4 rounded border border-gray-600">
+            <h3 class="font-bold text-xl mb-2">Validade Lógica</h3>
+            <p>${obj.valido ? "✔ Raciocínio válido" : "❌ Raciocínio inválido"}</p>
+        </div>
+        <div class="bg-gray-800 p-4 rounded border border-gray-600">
+            <h3 class="font-bold text-xl mb-2">Veracidade</h3>
+            <p>${obj.factual}</p>
+        </div>
+        <div class="bg-gray-800 p-4 rounded border border-gray-600">
+            <h3 class="font-bold text-xl mb-2">Fontes</h3>
+            <ul class="list-disc ml-5">
+                ${obj.fontes.map(f => `<li><a href="${f}" target="_blank">${f}</a></li>`).join("")}
+            </ul>
+        </div>
+    `;
+}
+
+async function analyzeText() {
+    const text = document.getElementById("inputText").value.trim();
+
+    if (!text) {
+        alert("Digite um texto.");
+        return;
+    }
+
+    showView("viewLoading");
+    animateLoadingSteps();
+
+    try {
+        const resp = await fetch("https://proud-exploration-production-1034.up.railway.app/analisar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ texto: text })
+        });
+
+        const data = await resp.json();
+        const raw = data.resultado.replace(/```json|```/g, "").trim();
+        const parsed = JSON.parse(raw);
+
+        const result = transformApiResult(parsed);
+        document.getElementById("resultsContainer").innerHTML = result;
+
+        showView("viewResults");
+
+    } catch (e) {
+        console.error("ERRO:", e);
+        alert("Erro ao conectar com a API.");
+        showView("viewHome");
+    }
+}
+</script>
+
+<style>
+.loader {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 4px solid #666;
+    border-top-color: #3b82f6;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+</body>
+</html>
