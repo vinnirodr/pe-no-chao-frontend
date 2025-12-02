@@ -18,7 +18,7 @@
             <textarea id="inputText" class="w-full p-3 rounded bg-gray-800 border border-gray-700 text-white"
                 placeholder="Digite seu texto aqui..." rows="5"></textarea>
 
-            <button onclick="analyzeText()" class="bg-blue-600 hover:bg-blue-700 p-3 rounded font-semibold">
+            <button id="analyzeBtn" class="bg-blue-600 hover:bg-blue-700 p-3 rounded font-semibold">
                 Analisar
             </button>
         </section>
@@ -41,7 +41,12 @@
         </section>
     </div>
 
-<script>
+<!-- SCRIPT COMO MÓDULO -->
+<script type="module">
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+console.log("🔥 API_URL carregada pelo Vite:", API_URL);
+
 function showView(viewId) {
     document.getElementById("viewHome").classList.add("hidden");
     document.getElementById("viewLoading").classList.add("hidden");
@@ -71,30 +76,44 @@ function animateLoadingSteps() {
     }, 1200);
 }
 
-function transformApiResult(obj) {
+function renderAnalysis(data) {
+    const premisesHTML = data.nlp.premises
+        .map((p, i) => `<p><strong>P${i + 1}:</strong> ${p.text}</p>`)
+        .join("");
+
+    const factChecksHTML = data.fact_check
+        .map((fc, i) => `
+            <p><strong>P${i + 1}:</strong> ${
+                fc.verified ? "✔ Factual" : "❌ Não verificado"
+            }</p>
+            <p class="text-gray-400 text-sm">${fc.reason}</p>
+        `)
+        .join("<hr class='border-gray-700 my-2'>");
+
     return `
-        <div class="bg-gray-800 p-4 rounded border border-gray-600">
+        <div class="bg-gray-800 p-4 rounded border border-gray-700">
             <h3 class="font-bold text-xl mb-2">Premissas</h3>
-            <p><strong>P1:</strong> ${obj.premissas.P1}</p>
-            <p><strong>P2:</strong> ${obj.premissas.P2}</p>
+            ${premisesHTML}
         </div>
-        <div class="bg-gray-800 p-4 rounded border border-gray-600">
+
+        <div class="bg-gray-800 p-4 rounded border border-gray-700">
             <h3 class="font-bold text-xl mb-2">Conclusão</h3>
-            <p>${obj.conclusao}</p>
+            <p>${data.nlp.conclusion.text}</p>
         </div>
-        <div class="bg-gray-800 p-4 rounded border border-gray-600">
+
+        <div class="bg-gray-800 p-4 rounded border border-gray-700">
             <h3 class="font-bold text-xl mb-2">Validade Lógica</h3>
-            <p>${obj.valido ? "✔ Raciocínio válido" : "❌ Raciocínio inválido"}</p>
+            <p>${data.logic.isValid ? "✔ Válido" : "❌ Inválido"}</p>
         </div>
-        <div class="bg-gray-800 p-4 rounded border border-gray-600">
-            <h3 class="font-bold text-xl mb-2">Veracidade</h3>
-            <p>${obj.factual}</p>
+
+        <div class="bg-gray-800 p-4 rounded border border-gray-700">
+            <h3 class="font-bold text-xl mb-2">Verificação de Fatos</h3>
+            ${factChecksHTML}
         </div>
-        <div class="bg-gray-800 p-4 rounded border border-gray-600">
-            <h3 class="font-bold text-xl mb-2">Fontes</h3>
-            <ul class="list-disc ml-5">
-                ${obj.fontes.map(f => `<li><a href="${f}" target="_blank">${f}</a></li>`).join("")}
-            </ul>
+
+        <div class="bg-gray-800 p-4 rounded border border-gray-700">
+            <h3 class="font-bold text-xl mb-2">Classificação Geral</h3>
+            <p>${data.assessment}</p>
         </div>
     `;
 }
@@ -111,27 +130,32 @@ async function analyzeText() {
     animateLoadingSteps();
 
     try {
-        const resp = await fetch("https://proud-exploration-production-1034.up.railway.app/analisar", {
+        const resp = await fetch(`${API_URL}/api/v1/analyses`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ texto: text })
+            body: JSON.stringify({ text })
         });
 
-        const data = await resp.json();
-        const raw = data.resultado.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(raw);
+        if (!resp.ok) {
+            throw new Error("Erro na API");
+        }
 
-        const result = transformApiResult(parsed);
-        document.getElementById("resultsContainer").innerHTML = result;
+        const data = await resp.json();
+        console.log("📩 RESPOSTA BRUTA:", data);
+
+        const html = renderAnalysis(data);
+        document.getElementById("resultsContainer").innerHTML = html;
 
         showView("viewResults");
 
     } catch (e) {
-        console.error("ERRO:", e);
+        console.error("❌ ERRO AO CHAMAR A API:", e);
         alert("Erro ao conectar com a API.");
         showView("viewHome");
     }
 }
+
+document.getElementById("analyzeBtn").onclick = analyzeText;
 </script>
 
 <style>
