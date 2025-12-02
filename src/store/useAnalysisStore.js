@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://pe-no-chao-backend-production.up.railway.app';
 
 const useAnalysisStore = create((set) => ({
     inputText: '',
@@ -17,7 +17,7 @@ const useAnalysisStore = create((set) => ({
     analyzeText: async (text) => {
         set({ status: 'analyzing', error: null, result: null });
         try {
-            const response = await axios.post(`${API_URL}/analyses`, { text });
+            const response = await axios.post(`${API_BASE_URL}/api/v1/analyses`, { text });
             set({
                 status: 'completed',
                 result: response.data,
@@ -36,14 +36,14 @@ const useAnalysisStore = create((set) => ({
 
     fetchHistory: async () => {
         try {
-            const response = await axios.get(`${API_URL}/analyses`);
+            const response = await axios.get(`${API_BASE_URL}/api/v1/analyses`);
             set({ publicHistory: response.data });
         } catch (e) { console.error(e); }
     },
 
     fetchStats: async () => {
         try {
-            const response = await axios.get(`${API_URL}/stats`);
+            const response = await axios.get(`${API_BASE_URL}/api/v1/stats`);
             set({ stats: response.data });
         } catch (e) { console.error(e); }
     },
